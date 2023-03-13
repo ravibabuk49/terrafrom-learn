@@ -1,0 +1,10 @@
+# local .terraform dir
+.terraform/*
+
+# tf state files
+*.tfstate
+*.tfstate.*
+
+# tf variable files, may include sensitive data,\
+#git ignores all files that ends with the extension .tfvars
+*.tfvars
