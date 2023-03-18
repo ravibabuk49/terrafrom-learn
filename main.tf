@@ -1,5 +1,6 @@
 provider "aws" {
   region = "ap-south-1"
+<<<<<<< HEAD
 }
 # variables
 variable vpc_cidr_blocks {}
@@ -15,6 +16,8 @@ resource "aws_vpc" "myapp-vpc" {
     tags = {
       "Name" = "${var.env_prefix}-vpc"
     }
+=======
+>>>>>>> f36806ef10abba856e167fa13960ee83c3523691
 }
 
 # create subnet in your specified vpc.
