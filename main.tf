@@ -1,6 +1,6 @@
 provider "aws" {
   region = "ap-south-1"
-<<<<<<< HEAD
+
 }
 # variables
 variable vpc_cidr_blocks {}
@@ -9,6 +9,7 @@ variable avail_zone {}
 variable env_prefix {}
 variable my_ip {}
 variable instance_type {}
+variable my_public_key_location {}
 
 # create vpc
 resource "aws_vpc" "myapp-vpc" {
@@ -16,8 +17,6 @@ resource "aws_vpc" "myapp-vpc" {
     tags = {
       "Name" = "${var.env_prefix}-vpc"
     }
-=======
->>>>>>> f36806ef10abba856e167fa13960ee83c3523691
 }
 
 # create subnet in your specified vpc.
@@ -71,6 +70,7 @@ resource "aws_route_table_association" "a-rtb-subnet" {
   
 }
 
+
 # creating security groups
 resource "aws_security_group" "myapp-sg" {
   vpc_id = aws_vpc.myapp-vpc.id
@@ -103,6 +103,7 @@ resource "aws_security_group" "myapp-sg" {
  
 }
 
+
 # set ami dynamically.
 #create amazon machine image(ami) for ec2 dynamically.
 
@@ -126,23 +127,41 @@ data "aws_ami" "latest-amazon-linux-image" {
   }
 }
 
+
 output "ami-id" {
   value = data.aws_ami.latest-amazon-linux-image.id
 }
-output "ami-name" {
-  value = data.aws_ami.latest-amazon-linux-image.name
+
+output "ec2-public-ip" {
+  value = aws_instance.myapp-server.public_ip
+}
+
+
+resource "aws_key_pair" "ssh-key" {
+  key_name = "terraform-learning"
+  public_key = file(var.my_public_key_location) # 'file' is used to refer the location of the key.
+  
 }
 
 # create ec2 instance
 resource "aws_instance" "myapp-server" {
   ami = data.aws_ami.latest-amazon-linux-image.id
   instance_type = var.instance_type
+
   subnet_id = aws_subnet.myapp-subnet-1.id
+
   # we can define list of security-groups here
   vpc_security_group_ids = [aws_security_group.myapp-sg.id]
+
   availability_zone = var.avail_zone
+
   associate_public_ip_address = true
-  key_name = "terraform-learning"
+
+  key_name = aws_key_pair.ssh-key.key_name
+
+# this only be executed once
+  user_data = file("entry-script.sh")
+  
   tags = {
     Name = "${var.env_prefix}-server"
   }
