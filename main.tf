@@ -81,18 +81,33 @@ resource "aws_security_group" "myapp-sg" {
   ingress {
     from_port = 22
     to_port = 22
-    protocol = "tcp"
-    cidr_blocks = [var.my_ip]
+    protocol = "TCP"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-    ingress {
-    from_port = 8080
-    to_port = 8080
+  ingress {
+    from_port = 80
+    to_port = 80
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-    egress {
+  ingress {
+    description      = "TLS from VPC"
+    from_port        = 443
+    to_port          = 443
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port = 8080
+    to_port = 8080
+    protocol = "TCP"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
     from_port = 0
     to_port = 0
     protocol = "-1"
@@ -140,12 +155,12 @@ output "ec2-public-ip" {
 resource "aws_key_pair" "ssh-key" {
   key_name = "terraform-learning"
   public_key = file(var.my_public_key_location) # 'file' is used to refer the location of the key.
-  
 }
 
 # create ec2 instance
 resource "aws_instance" "myapp-server" {
   ami = data.aws_ami.latest-amazon-linux-image.id
+
   instance_type = var.instance_type
 
   subnet_id = aws_subnet.myapp-subnet-1.id
@@ -161,7 +176,7 @@ resource "aws_instance" "myapp-server" {
 
 # this only be executed once
   user_data = file("entry-script.sh")
-  
+
   tags = {
     Name = "${var.env_prefix}-server"
   }
