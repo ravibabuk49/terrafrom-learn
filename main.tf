@@ -176,44 +176,50 @@ resource "aws_instance" "myapp-server" {
   key_name = aws_key_pair.ssh-key.key_name
 
 # this only be executed once, passing data to aws.
-  # user_data = file("entry-script.sh") 
+  user_data = file("entry-script.sh") 
 
-#connect via ssh using terraform.
-connection {
-  type = "ssh"
-  host = self.public_ip
-  user = "ec2-user"
-  private_key = file(var.my_private_key_location)
-}
-
-#'file' provisioner copy files or directories from local to newly created resource.
-provisioner "file" {
-  source = "entry-script.sh" #source file or folder
-  destination = "/home/ec2-user/entry-script.sh" #absolute path
-  
-}
-#'remote-exec' provisioner invokes script on a remote resource after it is created.
-#actually provisioners are not recommended by terraform.
-#configuration management tools like ansible, chef are alternative to remote-exec.
-provisioner "remote-exec" {
-  script = file("entry-script.sh")
-  # inline = [
-  #   #list of commands
-  # ]
-  
-}
-
-#'local-exec' provisioner invokes a local executable after a resource is created.
-#locally, not on the created resource.
-#'local' provider is the alternative to local-exec, maintained by harshicorp.
-provisioner "local-exec" {
-  command = "echo ${self.public_ip} > output.txt"
-  
-}
-
-  tags = {
+    tags = {
     Name = "${var.env_prefix}-server"
   }
+
+
+
+
+
+
+# #connect via ssh using terraform.
+# connection {
+#   type = "ssh"
+#   host = self.public_ip
+#   user = "ec2-user"
+#   private_key = file(var.my_private_key_location)
+# }
+
+# #'file' provisioner copy files or directories from local to newly created resource.
+# provisioner "file" {
+#   source = "entry-script.sh" #source file or folder
+#   destination = "/home/ec2-user/entry-script.sh" #absolute path
+  
+# }
+# #'remote-exec' provisioner invokes script on a remote resource after it is created.
+# #actually provisioners are not recommended by terraform.
+# #configuration management tools like ansible, chef are alternative to remote-exec.
+# provisioner "remote-exec" {
+#   script = file("entry-script.sh")
+#   # inline = [
+#   #   #list of commands
+#   # ]
+  
+# }
+
+# #'local-exec' provisioner invokes a local executable after a resource is created.
+# #locally, not on the created resource.
+# #'local' provider is the alternative to local-exec, maintained by harshicorp.
+# provisioner "local-exec" {
+#   command = "echo ${self.public_ip} > output.txt"
+  
+# }
+
 }
 
 
