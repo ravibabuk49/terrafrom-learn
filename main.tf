@@ -2,15 +2,6 @@ provider "aws" {
   region = "ap-south-1"
 
 }
-# variables
-variable vpc_cidr_blocks {}
-variable subnet_cidr_block {}
-variable avail_zone {}
-variable env_prefix {}
-variable my_ip {}
-variable instance_type {}
-variable my_public_key_location {}
-variable my_private_key_location {}
 
 # create vpc
 resource "aws_vpc" "myapp-vpc" {
@@ -20,200 +11,30 @@ resource "aws_vpc" "myapp-vpc" {
     }
 }
 
-# create subnet in your specified vpc.
-resource "aws_subnet" "myapp-subnet-1" {
-    vpc_id = aws_vpc.myapp-vpc.id
-    cidr_block = var.subnet_cidr_block
-    availability_zone = var.avail_zone
-    tags = {
-      "Name" = "${var.env_prefix}-subnet-1"
-    }
-}
-
-# create internet-gateway and attach it to vpc. 
-resource "aws_internet_gateway" "myapp-igw" {
-    vpc_id = aws_vpc.myapp-vpc.id
-    tags = {
-      Name = "${var.env_prefix}-igw"
-    }
-  
-}
-
-# creating route-table and assign it with igw to access the internet.
-resource "aws_route_table" "myapp-route-table" {
-    vpc_id = aws_vpc.myapp-vpc.id
-    route{
-        cidr_block = "0.0.0.0/0"
-        gateway_id = aws_internet_gateway.myapp-igw.id
-    }
-    tags = {
-       Name = "${var.env_prefix}-rtb"
-    }
-}
-
-# you can also use default route table 
-
-# resource "aws_default_route_table" "main-rtb" {
-#   default_route_table_id = aws_vpc.myapp-vpc.default_route_table_id
-  
-#   route = {
-#     cidr_block = "0.0.0.0/0"
-#     gateway_id = aws_internet_gateway.myapp-igw.id
-#   }
-  
-# }
-
-
-# assosiate subnet with (in)route table
-resource "aws_route_table_association" "a-rtb-subnet" {
-  subnet_id = aws_subnet.myapp-subnet-1.id
-  route_table_id = aws_route_table.myapp-route-table.id
-  
-}
-
-
-# creating security groups
-resource "aws_security_group" "myapp-sg" {
+# 'module' is used to reference it from other configuration file.
+module "myapp-subnet" {
+  # 1.values are defined in .tfvars file
+  # 2.set as values in variables.tf in root
+  # 3.values are passed to child modules as arguments
+  # 4.via variables.tf in child module
+  source = "./modules/subnet" # path to our module.
   vpc_id = aws_vpc.myapp-vpc.id
-   tags = {
-    Name = "${var.env_prefix}-sg"
-  }
+  subnet_cidr_block = var.subnet_cidr_block
+  avail_zone = var.avail_zone
+  env_prefix = var.env_prefix
+  default_route_table_id = aws_vpc.myapp-vpc.default_route_table_id
 
-  ingress {
-    from_port = 22
-    to_port = 22
-    protocol = "TCP"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description      = "TLS from VPC"
-    from_port        = 443
-    to_port          = 443
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port = 8080
-    to_port = 8080
-    protocol = "TCP"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "these rules are used to fetch data from outside(internet)"
-    prefix_list_ids = []
-  }
- 
 }
 
-
-# set ami dynamically.
-#create amazon machine image(ami) for ec2 dynamically.
-
-data "aws_ami" "latest-amazon-linux-image" {
-  most_recent      = true
-  owners           = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
-  }
-
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
-
-output "ami-id" {
-  value = data.aws_ami.latest-amazon-linux-image.id
-}
-
-output "ec2-public-ip" {
-  value = aws_instance.myapp-server.public_ip
-}
-
-
-resource "aws_key_pair" "ssh-key" {
-  key_name = "terraform-learning"
-  public_key = file(var.my_public_key_location) # 'file' is used to refer the location of the key.
-}
-
-# create ec2 instance
-resource "aws_instance" "myapp-server" {
-  ami = data.aws_ami.latest-amazon-linux-image.id
-
+module "myapp-server" {
+  source = "./modules/webserver"
+  vpc_id = aws_vpc.myapp-vpc.id
+  env_prefix = var.env_prefix
+  my_public_key_location = var.my_public_key_location
   instance_type = var.instance_type
+  subnet_id = module.myapp-subnet.subnet.id#(name of the ouput)
+  avail_zone = var.avail_zone
+  image_name = var.image_name
+  my_ip = var.my_ip
 
-  subnet_id = aws_subnet.myapp-subnet-1.id
-
-  # we can define list of security-groups here
-  vpc_security_group_ids = [aws_security_group.myapp-sg.id]
-
-  availability_zone = var.avail_zone
-
-  associate_public_ip_address = true
-
-  key_name = aws_key_pair.ssh-key.key_name
-
-# this only be executed once, passing data to aws.
-  # user_data = file("entry-script.sh") 
-
-#connect via ssh using terraform.
-connection {
-  type = "ssh"
-  host = self.public_ip
-  user = "ec2-user"
-  private_key = file(var.my_private_key_location)
 }
-
-#'file' provisioner copy files or directories from local to newly created resource.
-provisioner "file" {
-  source = "entry-script.sh" #source file or folder
-  destination = "/home/ec2-user/entry-script.sh" #absolute path
-  
-}
-#'remote-exec' provisioner invokes script on a remote resource after it is created.
-#actually provisioners are not recommended by terraform.
-#configuration management tools like ansible, chef are alternative to remote-exec.
-provisioner "remote-exec" {
-  script = file("entry-script.sh")
-  # inline = [
-  #   #list of commands
-  # ]
-  
-}
-
-#'local-exec' provisioner invokes a local executable after a resource is created.
-#locally, not on the created resource.
-#'local' provider is the alternative to local-exec, maintained by harshicorp.
-provisioner "local-exec" {
-  command = "echo ${self.public_ip} > output.txt"
-  
-}
-
-  tags = {
-    Name = "${var.env_prefix}-server"
-  }
-}
-
-
