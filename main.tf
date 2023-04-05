@@ -1,9 +1,24 @@
+# the terraform block is used to define the provider and backend configuration settings for a Terraform project.
+# The backend block allows you to specify the backend type, 
+# such as S3, Azure Blob Storage, or Consul, as well as the backend configuration settings, 
+# such as bucket names or connection details.
+terraform {
+  required_version = ">=0.14"
+  backend "s3" {
+    bucket = "myapp-bucket-04"
+    key = "myapp/state.tfstate"
+    region = "ap-south-1"
+  }
+}  # do terraform init to set s3 bucket as backend to store .tfstate
+
+
+
 provider "aws" {
   region = "ap-south-1"
 
 }
 
-# using existing module from terraform registary and modified it.
+# using existing module from terraform registry and modified it.
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
