@@ -1,8 +1,8 @@
 # creating security groups
-resource "aws_default_security_group" "myapp-sg" {
+resource "aws_security_group" "myapp-sg" {
   vpc_id = var.vpc_id
    tags = {
-    Name = "${var.env_prefix}-default-sg"
+    Name = "${var.env_prefix}-myapp-sg"
   }
 
   ingress {
@@ -84,7 +84,7 @@ resource "aws_instance" "myapp-server" {
   subnet_id = var.subnet_id
 
   # we can define list of security-groups here
-  vpc_security_group_ids = [aws_default_security_group.myapp-sg.id]
+  vpc_security_group_ids = [aws_security_group.myapp-sg.id]
 
   availability_zone = var.avail_zone
 
@@ -94,7 +94,10 @@ resource "aws_instance" "myapp-server" {
 
 # this only be executed once, passing data to aws.
   user_data = file("entry-script.sh") 
+
+    tags = {
+    Name = "${var.env_prefix}-server"
+  }
+  
 }
-  #   tags = {
-  #   Name = "${var.env_prefix}-server"
-  # }
+  
