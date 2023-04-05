@@ -3,7 +3,7 @@ provider "aws" {
 
 }
 
-# using existing module from terraform registary and modified it.
+# using existing module from terraform registry and modified it.
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
